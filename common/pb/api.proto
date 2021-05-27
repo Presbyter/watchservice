@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+option go_package = "./;pb";
+
+service ApiService{
+  rpc GetServerVersion(GetServerVersionReq)returns(GetServerVersionResp);
+}
+
+message GetServerVersionReq{
+
+}
+
+message GetServerVersionResp{
+
+}
