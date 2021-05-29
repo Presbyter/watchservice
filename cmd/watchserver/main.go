@@ -1,8 +1,9 @@
 package main
 
 import (
+	"context"
 	"flag"
-	"github.com/fsnotify/fsnotify"
+	"github.com/Presbyter/watchserver"
 	"github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
@@ -21,6 +22,7 @@ func init() {
 	logrus.SetOutput(os.Stdout)
 	logrus.SetFormatter(&logrus.TextFormatter{})
 	logrus.SetLevel(logrus.DebugLevel)
+	logrus.SetReportCaller(true)
 }
 
 func main() {
@@ -34,35 +36,12 @@ func main() {
 		folderPath = filepath.Dir(path)
 	}
 
-	// creates a new file watcher
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		logrus.Errorf("NewWatcher 失败. error: %s", err)
-		return
-	}
-	defer watcher.Close()
-
-	//
-	go func() {
-		for {
-			select {
-			// watch for events
-			case event := <-watcher.Events:
-				logrus.Debugf("EVENT! %s", event.String())
-				// watch for errors
-			case err := <-watcher.Errors:
-				logrus.Errorf("watcher error: %s", err)
-			}
-		}
-	}()
-
-	// out of the box fsnotify can watch a single file, or a single directory
-	if err := watcher.Add(folderPath); err != nil {
-		logrus.Errorf("监听文件夹失败. error: %s", err)
-		return
-	}
+	ctx, cancel := context.WithCancel(context.Background())
+	s := watchserver.NewWatcher(folderPath)
+	go s.Run(ctx)
 
 	ch := make(chan os.Signal)
 	signal.Notify(ch, os.Interrupt, os.Kill, syscall.SIGTERM)
 	logrus.Infof("收到信号 %v, 进程即将退出.", <-ch)
+	cancel()
 }
